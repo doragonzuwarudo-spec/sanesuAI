@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Parameter Playground</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    .prose p { margin-bottom: 0.5rem; }
+    .prose p:last-child { margin-bottom: 0; }
+    .prose code { background-color: #f1f5f9; padding: 0.1rem 0.3rem; border-radius: 0.25rem; font-size: 0.875em; }
+    .prose pre { background-color: #0f172a; color: #f8fafc; padding: 0.75rem; border-radius: 0.5rem; overflow-x: auto; margin-top: 0.5rem; margin-bottom: 0.5rem; }
+    .prose pre code { background-color: transparent; color: inherit; padding: 0; }
+    .prose ul { list-style-type: disc; padding-left: 1.25rem; margin-top: 0.25rem; margin-bottom: 0.5rem; }
+    .prose ol { list-style-type: decimal; padding-left: 1.25rem; margin-top: 0.25rem; margin-bottom: 0.5rem; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans h-screen flex flex-col overflow-hidden">
+
+  <!-- Header -->
+  <header class="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between shrink-0 z-10">
+    <div class="flex items-center gap-3">
+      <div class="bg-indigo-600 text-white p-2 rounded-lg flex items-center justify-center">
+        <i data-lucide="sliders" class="w-5 h-5"></i>
+      </div>
+      <div>
+        <h1 class="font-bold text-slate-800 leading-tight">AI Parameter Playground</h1>
+        <p class="text-xs text-slate-500">パラメーターの違いによるAI応答の変化を試せるチャット</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-2">
+      <button id="clearChatBtn" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-md transition border border-slate-200">
+        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+        チャットをクリア
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <div class="flex-1 flex overflow-hidden">
+    
+    <!-- Sidebar: Parameter Controls -->
+    <aside class="w-80 bg-white border-r border-slate-200 flex flex-col shrink-0 overflow-y-auto">
+      <div class="p-5 space-y-6">
+        
+        <!-- Presets -->
+        <div>
+          <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">プリセット設定</label>
+          <div class="grid grid-cols-2 gap-2">
+            <button onclick="applyPreset('creative')" class="px-3 py-2 text-xs font-medium text-left rounded-lg border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/50 transition">
+              <span class="block font-semibold text-slate-700">🎨 クリエイティブ</span>
+              <span class="text-[10px] text-slate-400">Temp: 1.2</span>
+            </button>
+            <button onclick="applyPreset('balanced')" class="px-3 py-2 text-xs font-medium text-left rounded-lg border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/50 transition">
+              <span class="block font-semibold text-slate-700">⚖️ バランス</span>
+              <span class="text-[10px] text-slate-400">Temp: 0.7</span>
+            </button>
+            <button onclick="applyPreset('precise')" class="px-3 py-2 text-xs font-medium text-left rounded-lg border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/50 transition">
+              <span class="block font-semibold text-slate-700">🎯 精確・論理的</span>
+              <span class="text-[10px] text-slate-400">Temp: 0.1</span>
+            </button>
+            <button onclick="applyPreset('search')" class="px-3 py-2 text-xs font-medium text-left rounded-lg border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/50 transition">
+              <span class="block font-semibold text-slate-700">🔍 Web検索付き</span>
+              <span class="text-[10px] text-slate-400">検索ON</span>
+            </button>
+          </div>
+        </div>
+
+        <hr class="border-slate-100">
+
+        <!-- System Instruction -->
+        <div>
+          <div class="flex items-center justify-between mb-1.5">
+            <label for="systemInstruction" class="text-xs font-bold text-slate-700 flex items-center gap-1">
+              System Instruction
+            </label>
+            <span class="text-[10px] text-slate-400">役割・指示</span>
+          </div>
+          <textarea id="systemInstruction" rows="3" class="w-full text-xs p-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none" placeholder="AIの役割を設定（例: あなたはゲーム開発のプロです。）"></textarea>
+        </div>
+
+        <!-- Temperature -->
+        <div>
+          <div class="flex items-center justify-between mb-1.5">
+            <label for="temperature" class="text-xs font-bold text-slate-700">Temperature (温度)</label>
+            <span id="tempValue" class="text-xs font-mono font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">0.7</span>
+          </div>
+          <input type="range" id="temperature" min="0" max="2" step="0.1" value="0.7" class="w-full accent-indigo-600 cursor-pointer">
+          <div class="flex justify-between text-[10px] text-slate-400 mt-1">
+            <span>0.0 (確実)</span>
+            <span>1.0 (標準)</span>
+            <span>2.0 (創造的)</span>
+          </div>
+        </div>
+
+        <!-- Top P -->
+        <div>
+          <div class="flex items-center justify-between mb-1.5">
+            <label for="topP" class="text-xs font-bold text-slate-700">Top P</label>
+            <span id="topPValue" class="text-xs font-mono font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">0.95</span>
+          </div>
+          <input type="range" id="topP" min="0" max="1" step="0.05" value="0.95" class="w-full accent-indigo-600 cursor-pointer">
+        </div>
+
+        <hr class="border-slate-100">
+
+        <!-- Google Search Tool Toggle -->
+        <div class="flex items-center justify-between">
+          <div>
+            <label for="searchToggle" class="text-xs font-bold text-slate-700 block">Google Search</label>
+            <span class="text-[11px] text-slate-500">最新Web参照</span>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="searchToggle" class="sr-only peer">
+            <div class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
+          </label>
+        </div>
+
+      </div>
+    </aside>
+
+    <!-- Chat Area -->
+    <main class="flex-1 flex flex-col bg-slate-50 relative">
+      <div id="chatMessages" class="flex-1 overflow-y-auto p-6 space-y-4">
+        <div class="flex gap-3 max-w-3xl mx-auto">
+          <div class="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center shrink-0">
+            <i data-lucide="bot" class="w-4 h-4"></i>
+          </div>
+          <div class="flex-1 bg-white p-4 rounded-2xl rounded-tl-none border border-slate-200 shadow-sm text-sm leading-relaxed">
+            <p class="font-bold text-slate-800 mb-1">AI Parameter Playground</p>
+            <p class="text-slate-600">パラメーターの数値を動かして、AIの返答の違いを試してみてください。</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Input Area -->
+      <div class="p-4 bg-white border-t border-slate-200">
+        <div class="max-w-3xl mx-auto">
+          <form id="chatForm" class="flex items-end gap-2 bg-slate-100 rounded-xl p-2 border border-slate-200">
+            <textarea id="userInput" rows="1" class="flex-1 bg-transparent px-2 py-1.5 text-sm focus:outline-none resize-none max-h-32 text-slate-800" placeholder="メッセージを入力..." required></textarea>
+            <button type="submit" id="sendBtn" class="bg-indigo-600 text-white p-2.5 rounded-lg hover:bg-indigo-700 transition shrink-0">
+              <i data-lucide="send" class="w-4 h-4"></i>
+            </button>
+          </form>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    lucide.createIcons();
+    const chatMessages = document.getElementById('chatMessages');
+    const chatForm = document.getElementById('chatForm');
+    const userInput = document.getElementById('userInput');
+    const tempInput = document.getElementById('temperature');
+    const tempValue = document.getElementById('tempValue');
+    const topPInput = document.getElementById('topP');
+    const topPValue = document.getElementById('topPValue');
+    const systemInstruction = document.getElementById('systemInstruction');
+    const searchToggle = document.getElementById('searchToggle');
+
+    tempInput.addEventListener('input', (e) => tempValue.textContent = e.target.value);
+    topPInput.addEventListener('input', (e) => topPValue.textContent = e.target.value);
+
+    function applyPreset(type) {
+      if (type === 'creative') { tempInput.value = 1.2; systemInstruction.value = "ユニークなアイデアを出すクリエイターです。"; }
+      else if (type === 'balanced') { tempInput.value = 0.7; systemInstruction.value = "親切なAIアシスタントです。"; }
+      else if (type === 'precise') { tempInput.value = 0.1; systemInstruction.value = "正確で事実重視の専門家です。"; }
+      else if (type === 'search') { tempInput.value = 0.3; searchToggle.checked = true; }
+      tempInput.dispatchEvent(new Event('input'));
+    }
+
+    document.getElementById('clearChatBtn').addEventListener('click', () => {
+      chatMessages.innerHTML = '';
+    });
+
+    chatForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const text = userInput.value.trim();
+      if (!text) return;
+      
+      const userDiv = document.createElement('div');
+      userDiv.className = 'flex gap-3 max-w-3xl mx-auto justify-end';
+      userDiv.innerHTML = `<div class="bg-indigo-600 text-white p-3.5 rounded-2xl rounded-tr-none text-sm max-w-[85%]">${text}</div>`;
+      chatMessages.appendChild(userDiv);
+      
+      userInput.value = '';
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    });
+  </script>
+</body>
+</html>
